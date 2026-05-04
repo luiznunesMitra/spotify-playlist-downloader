@@ -1,98 +1,179 @@
 # Spotify Playlist Downloader
 
-Baixa todas as músicas de uma playlist do Spotify em MP3/FLAC via YouTube — **sem precisar de API key ou conta do Spotify**.
+Baixa todas as músicas de uma playlist do Spotify em MP3/FLAC via YouTube.
+**Não precisa de API key, conta do Spotify, nem login.**
 
 ## Como funciona
 
-1. Acessa o embed da playlist no Spotify e extrai as primeiras 100 faixas
-2. Usa o endpoint interno `spclient` para obter a lista completa (playlists com 100+ faixas)
-3. Resolve os nomes das faixas extras via embed individual de cada track
-4. Gera um arquivo batch e baixa tudo via `yt-dlp` buscando no YouTube
-
-## Instalação
-
-### Linux (Ubuntu/Debian)
-```bash
-sudo apt install yt-dlp ffmpeg
-# ou via pip:
-pip install yt-dlp
+```
+URL do Spotify → extrai nomes das músicas → busca no YouTube → baixa em MP3/FLAC
 ```
 
-### Linux (Arch)
+1. Acessa o embed da playlist e pega as primeiras 100 faixas
+2. Para playlists com 100+ faixas, usa o endpoint `spclient` pra pegar o resto
+3. Gera um arquivo batch e baixa tudo via `yt-dlp`
+
+---
+
+## Instalação (Linux - Ubuntu/Debian)
+
 ```bash
-sudo pacman -S yt-dlp ffmpeg
+# 1. Clonar o repositório
+git clone https://github.com/luiznunesMitra/spotify-playlist-downloader.git
+cd spotify-playlist-downloader
+
+# 2. Instalar dependências
+sudo apt install ffmpeg nodejs
+
+# 3. Instalar yt-dlp (versão mais recente via pipx)
+sudo apt install pipx
+pipx install yt-dlp
+
+# 4. Garantir que ~/.local/bin está no PATH
+# (adicionar no ~/.bashrc se não estiver)
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### macOS
+### Outros sistemas
+
+**Arch Linux:**
 ```bash
-brew install yt-dlp ffmpeg
+sudo pacman -S yt-dlp ffmpeg nodejs
 ```
 
-### Windows
+**macOS:**
+```bash
+brew install yt-dlp ffmpeg node
+```
+
+**Windows (PowerShell):**
 ```powershell
 pip install yt-dlp
 winget install Gyan.FFmpeg
+winget install OpenJS.NodeJS
 ```
+
+---
 
 ## Uso
 
-### Baixar playlist inteira em MP3
+### Baixar uma playlist inteira em MP3
+
 ```bash
-python spotify_dl.py "https://open.spotify.com/playlist/75sdPSQ4mlwKZeZluhIdiP"
+python3 spotify_dl.py "https://open.spotify.com/playlist/LINK_AQUI"
 ```
 
-### Escolher formato (FLAC, OPUS, etc)
+As músicas são salvas numa pasta com o nome da playlist.
+
+### Escolher onde salvar
+
 ```bash
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" --format flac
+python3 spotify_dl.py "https://open.spotify.com/playlist/LINK" -o /mnt/hd/musicas
 ```
 
-### Escolher pasta de saída
+### Escolher formato
+
 ```bash
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" --output /mnt/hd/musicas
+# FLAC (sem perda de qualidade, arquivos maiores)
+python3 spotify_dl.py "https://open.spotify.com/playlist/LINK" -f flac
+
+# OPUS (boa qualidade, arquivos menores)
+python3 spotify_dl.py "https://open.spotify.com/playlist/LINK" -f opus
 ```
 
 ### Apenas listar as músicas (sem baixar)
-```bash
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" --list-only
-```
-
-### Apenas gerar o arquivo batch (pra baixar depois/em outro PC)
-```bash
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" --batch-only
-```
-
-Depois baixa manualmente com:
-```bash
-yt-dlp --batch-file download_all.txt -x --audio-format mp3 --audio-quality 0 -o '%(title)s.%(ext)s'
-```
-
-## Exemplos
 
 ```bash
-# Baixar playlist em MP3 320kbps pro HD externo
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" -o /mnt/hd/musicas -f mp3
-
-# Baixar em FLAC (sem perda de qualidade)
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" -f flac
-
-# Só ver o que tem na playlist
-python spotify_dl.py "https://open.spotify.com/playlist/XXXXX" -l
+python3 spotify_dl.py "https://open.spotify.com/playlist/LINK" -l
 ```
+
+### Apenas gerar o arquivo batch (pra baixar depois)
+
+```bash
+python3 spotify_dl.py "https://open.spotify.com/playlist/LINK" -b
+```
+
+Isso cria o `download_all.txt`. Depois você baixa quando quiser com:
+
+```bash
+yt-dlp --js-runtimes node --remote-components ejs:github \
+  --batch-file download_all.txt \
+  -x --audio-format mp3 --audio-quality 0 \
+  --embed-thumbnail --add-metadata \
+  --ignore-errors --no-overwrites --no-playlist \
+  -o '%(title)s.%(ext)s'
+```
+
+---
+
+## Exemplo completo
+
+```bash
+# Clonar
+git clone https://github.com/luiznunesMitra/spotify-playlist-downloader.git
+cd spotify-playlist-downloader
+
+# Baixar playlist pro HD externo
+python3 spotify_dl.py "https://open.spotify.com/playlist/75sdPSQ4mlwKZeZluhIdiP" -o /media/seu_usuario/HD/Musicas
+```
+
+---
+
+## Troubleshooting
+
+### `Signature solving failed` / `n challenge solving failed`
+
+O yt-dlp precisa do Node.js pra resolver desafios do YouTube. Instale:
+```bash
+sudo apt install nodejs
+```
+
+O script já usa `--js-runtimes node` e `--remote-components ejs:github` automaticamente.
+
+### `externally-managed-environment` ao instalar yt-dlp
+
+Use pipx em vez de pip:
+```bash
+sudo apt install pipx
+pipx install yt-dlp
+```
+
+Ou force com:
+```bash
+pip install yt-dlp --break-system-packages
+```
+
+### `yt-dlp: command not found`
+
+Se instalou via pipx, o binário fica em `~/.local/bin/`. Adicione ao PATH:
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+O script também procura automaticamente em `~/.local/bin/yt-dlp`.
+
+### Atualizar o yt-dlp
+
+```bash
+pipx upgrade yt-dlp
+```
+
+---
 
 ## Arquivos gerados
 
 | Arquivo | Descrição |
 |---|---|
-| `tracklist.txt` | Lista numerada das músicas (artista - título) |
-| `download_all.txt` | Arquivo batch para o yt-dlp |
-| `*.mp3` / `*.flac` | As músicas baixadas |
+| `tracklist.txt` | Lista numerada (artista - título) |
+| `download_all.txt` | Arquivo batch pro yt-dlp |
+| `*.mp3` / `*.flac` | Músicas baixadas com capa e metadados |
 
 ## Limitações
 
-- O embed do Spotify retorna no máximo 100 faixas por vez. Para playlists maiores, o script usa o `spclient` para obter os URIs restantes e resolve os nomes individualmente.
+- O embed do Spotify retorna no máximo 100 faixas. Para playlists maiores, o script usa o `spclient` + embeds individuais (pode demorar um pouco).
 - O Spotify pode aplicar rate limit temporário. Se acontecer, espere uns minutos e tente novamente.
-- A qualidade do áudio depende do que está disponível no YouTube. MP3 com `--audio-quality 0` resulta em ~245kbps VBR (equivalente a 320kbps CBR).
-- Faixas muito obscuras ou remixes específicos do Spotify podem não ter match exato no YouTube.
+- Faixas muito obscuras podem não ter match exato no YouTube.
 
 ## Licença
 
