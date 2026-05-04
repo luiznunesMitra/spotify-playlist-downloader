@@ -1,0 +1,11 @@
+*.mp3
+*.flac
+*.opus
+*.m4a
+*.wav
+*.html
+__pycache__/
+*.pyc
+download_all.txt
+tracklist.txt
+download_log.txt
