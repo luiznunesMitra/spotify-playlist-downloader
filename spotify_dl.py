@@ -255,6 +255,32 @@ def download_tracks(batch_file, output_dir, audio_format="mp3"):
     subprocess.run(cmd)
 
 
+def tag_album(output_dir, album_name, audio_format="mp3"):
+    """Define o album de todos os arquivos baixados com o nome da playlist."""
+    try:
+        from mutagen.mp3 import MP3
+        from mutagen.id3 import TALB
+    except ImportError:
+        print("mutagen nao instalado, pulando tags de album.")
+        print("Instale com: pip install mutagen")
+        return
+
+    files = list(output_dir.glob(f"*.{audio_format}"))
+    count = 0
+    for f in files:
+        try:
+            audio = MP3(str(f))
+            if audio.tags is None:
+                audio.add_tags()
+            audio.tags.add(TALB(encoding=3, text=album_name))
+            audio.save()
+            count += 1
+        except Exception:
+            pass
+
+    print(f"Album '{album_name}' definido em {count}/{len(files)} arquivos")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Baixa musicas de playlists do Spotify via YouTube",
@@ -320,6 +346,9 @@ def main():
 
     check_dependencies()
     download_tracks(batch_path, output_dir, args.format)
+
+    # Definir album com o nome da playlist
+    tag_album(output_dir, playlist_name, args.format)
 
     count = len(list(output_dir.glob(f"*.{args.format}")))
     print(f"\nConcluido! {count} arquivos baixados em: {output_dir}")
